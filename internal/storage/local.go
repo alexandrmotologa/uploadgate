@@ -3,11 +3,13 @@ package storage
 import (
 	"context"
 	"crypto/hmac"
+	"crypto/md5"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"net/http"
 	"os"
@@ -145,18 +147,151 @@ func (l *LocalProvider) ValidateToken(tokenStr string) (*LocalUploadToken, error
 	return &claims, nil
 }
 
-// InitiateMultipart is a stub for local storage (local storage handles large files directly).
+// LocalPartToken holds signed claims for local multipart chunk uploads.
+type LocalPartToken struct {
+	MultipartID string `json:"mp_id"`
+	PartNumber  int32  `json:"part"`
+	Key         string `json:"key"`
+	ExpiresAt   int64  `json:"exp"`
+}
+
+// InitiateMultipart creates an isolated chunk directory for assembling multipart uploads.
 func (l *LocalProvider) InitiateMultipart(ctx context.Context, key string, mimeType string) (string, error) {
-	return "local_multipart_" + uuid.New().String(), nil
+	mpID := "local_mp_" + strings.ReplaceAll(uuid.New().String(), "-", "")
+	sessionDir := filepath.Join(l.directory, ".multipart", mpID)
+	if err := os.MkdirAll(sessionDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to initialize multipart session directory: %w", err)
+	}
+	return mpID, nil
 }
 
+// PresignPart generates a signed one-time token for uploading an individual chunk.
 func (l *LocalProvider) PresignPart(ctx context.Context, key string, multipartUploadID string, partNumber int32, expiry time.Duration) (string, error) {
-	token := fmt.Sprintf("%s_part_%d", multipartUploadID, partNumber)
-	return fmt.Sprintf("%s/upload/part/%s", l.publicBaseURL, token), nil
+	exp := time.Now().Add(expiry)
+	claims := LocalPartToken{
+		MultipartID: multipartUploadID,
+		PartNumber:  partNumber,
+		Key:         key,
+		ExpiresAt:   exp.Unix(),
+	}
+
+	tokenBytes, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
+
+	tokenB64 := base64.RawURLEncoding.EncodeToString(tokenBytes)
+	mac := hmac.New(sha256.New, l.secretKey)
+	mac.Write([]byte(tokenB64))
+	sigB64 := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	signedToken := fmt.Sprintf("%s.%s", tokenB64, sigB64)
+
+	return fmt.Sprintf("%s/upload/part/%s", l.publicBaseURL, signedToken), nil
 }
 
+// CompleteMultipart stitches all uploaded chunk files into the final destination asset.
 func (l *LocalProvider) CompleteMultipart(ctx context.Context, key string, multipartUploadID string, parts []CompletedPart) error {
+	sessionDir := filepath.Join(l.directory, ".multipart", multipartUploadID)
+	defer os.RemoveAll(sessionDir)
+
+	cleanPath := filepath.Clean(key)
+	if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) {
+		return errors.New("illegal storage key path")
+	}
+
+	destPath := filepath.Join(l.directory, cleanPath)
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return err
+	}
+
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %w", err)
+	}
+	defer destFile.Close()
+
+	// Append each chunk in sequential order
+	for i := 1; i <= len(parts); i++ {
+		chunkPath := filepath.Join(sessionDir, fmt.Sprintf("part_%d.chunk", i))
+		chunkFile, err := os.Open(chunkPath)
+		if err != nil {
+			return fmt.Errorf("missing chunk %d for multipart upload %s: %w", i, multipartUploadID, err)
+		}
+		_, copyErr := io.Copy(destFile, chunkFile)
+		chunkFile.Close()
+		if copyErr != nil {
+			return fmt.Errorf("error assembling chunk %d: %w", i, copyErr)
+		}
+	}
+
 	return nil
+}
+
+// HandlePartUpload streams an individual chunk to the session directory.
+func (l *LocalProvider) HandlePartUpload(w http.ResponseWriter, r *http.Request, tokenStr string) {
+	parts := strings.Split(tokenStr, ".")
+	if len(parts) != 2 {
+		http.Error(w, "invalid part token format", http.StatusForbidden)
+		return
+	}
+
+	tokenB64, sigB64 := parts[0], parts[1]
+	expectedSig := hmac.New(sha256.New, l.secretKey)
+	expectedSig.Write([]byte(tokenB64))
+	calcSig := expectedSig.Sum(nil)
+
+	actualSig, err := base64.RawURLEncoding.DecodeString(sigB64)
+	if err != nil || !hmac.Equal(calcSig, actualSig) {
+		http.Error(w, "invalid part token signature", http.StatusForbidden)
+		return
+	}
+
+	data, err := base64.RawURLEncoding.DecodeString(tokenB64)
+	if err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	var claims LocalPartToken
+	if err := json.Unmarshal(data, &claims); err != nil {
+		http.Error(w, "corrupt token", http.StatusBadRequest)
+		return
+	}
+
+	if time.Now().Unix() > claims.ExpiresAt {
+		http.Error(w, "part token expired", http.StatusForbidden)
+		return
+	}
+
+	sessionDir := filepath.Join(l.directory, ".multipart", claims.MultipartID)
+	_ = os.MkdirAll(sessionDir, 0755)
+
+	chunkPath := filepath.Join(sessionDir, fmt.Sprintf("part_%d.chunk", claims.PartNumber))
+	f, err := os.Create(chunkPath)
+	if err != nil {
+		http.Error(w, "failed to create chunk file", http.StatusInternalServerError)
+		return
+	}
+	defer f.Close()
+
+	hasher := md5Hasher()
+	tee := io.TeeReader(r.Body, hasher)
+	written, err := io.Copy(f, tee)
+	if err != nil {
+		_ = os.Remove(chunkPath)
+		http.Error(w, "chunk upload failed", http.StatusInternalServerError)
+		return
+	}
+
+	etag := fmt.Sprintf("\"%x\"", hasher.Sum(nil))
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(fmt.Sprintf(`{"part_number":%d,"etag":%s,"bytes":%d}`, claims.PartNumber, etag, written)))
+}
+
+func md5Hasher() hash.Hash {
+	return md5.New()
 }
 
 // GetObject opens a stored file for reading.

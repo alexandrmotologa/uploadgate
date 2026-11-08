@@ -112,6 +112,21 @@ func (s *Server) setupRoutes() {
 			localProv.HandleUpload(w, req, token)
 		})
 
+		r.Put("/upload/part/{token}", func(w http.ResponseWriter, req *http.Request) {
+			token := chi.URLParam(req, "token")
+			p, err := s.storageMgr.Get("local")
+			if err != nil {
+				http.Error(w, "local storage not configured", http.StatusNotFound)
+				return
+			}
+			localProv, ok := p.(*storage.LocalProvider)
+			if !ok {
+				http.Error(w, "invalid local provider", http.StatusInternalServerError)
+				return
+			}
+			localProv.HandlePartUpload(w, req, token)
+		})
+
 		r.Get("/files/*", func(w http.ResponseWriter, req *http.Request) {
 			key := chi.URLParam(req, "*")
 			p, err := s.storageMgr.Get("local")

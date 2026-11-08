@@ -158,16 +158,19 @@ export function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             {/* SSE Live Status */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/60 border border-slate-700/60 text-xs">
+            <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-slate-800/60 border border-slate-700/60 text-xs">
               <span
-                className={`w-2 h-2 rounded-full ${
+                className={`w-2 h-2 rounded-full shrink-0 ${
                   sseConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
                 }`}
               />
-              <span className="text-slate-400 text-[11px] font-medium">
+              <span className="text-slate-400 text-[11px] font-medium hidden sm:inline">
                 {sseConnected ? "Live SSE Stream" : "Reconnecting..."}
+              </span>
+              <span className="text-slate-400 text-[11px] font-medium sm:hidden">
+                {sseConnected ? "Live" : "Off"}
               </span>
             </div>
 
@@ -175,10 +178,10 @@ export function App() {
               href="/metrics"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1 text-xs text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-slate-800 transition-colors"
+              className="flex items-center gap-1 text-xs text-slate-400 hover:text-white px-2 sm:px-2.5 py-1 rounded-lg hover:bg-slate-800 transition-colors"
             >
               <BarChart3 className="w-3.5 h-3.5" />
-              <span>Metrics</span>
+              <span className="hidden sm:inline">Metrics</span>
             </a>
 
             <button
@@ -186,10 +189,11 @@ export function App() {
                 setTempKey(apiKey);
                 setShowKeyModal(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition-colors"
             >
-              <Key className="w-3.5 h-3.5 text-blue-400" />
-              <span>{apiKey ? "API Key Configured" : "Set API Key"}</span>
+              <Key className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <span className="hidden sm:inline">{apiKey ? "API Key Configured" : "Set API Key"}</span>
+              <span className="sm:hidden">{apiKey ? "Key" : "Auth"}</span>
             </button>
           </div>
         </div>

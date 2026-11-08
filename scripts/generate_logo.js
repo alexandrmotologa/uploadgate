@@ -1,0 +1,238 @@
+const fs = require('fs');
+const path = require('path');
+
+let Resvg;
+try {
+  Resvg = require('@resvg/resvg-js').Resvg;
+} catch (e) {
+  try {
+    Resvg = require('B:/workgit/node_modules/@resvg/resvg-js').Resvg;
+  } catch (err) {
+    console.error('Could not load @resvg/resvg-js:', err.message);
+  }
+}
+
+function buildLogoSvg() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="squircle-clip">
+      <rect x="24" y="24" width="976" height="976" rx="220" />
+    </clipPath>
+
+    <linearGradient id="cyan-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f5ff"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <linearGradient id="shield-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#00f5ff" stop-opacity="0.05"/>
+    </linearGradient>
+
+    <filter id="subtle-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.14" />
+    </filter>
+  </defs>
+
+  <!-- Luxury White Squircle Container -->
+  <rect x="24" y="24" width="976" height="976" rx="220" fill="#ffffff" stroke="#e2e8f0" stroke-width="6" />
+
+  <g clip-path="url(#squircle-clip)">
+    <g transform="translate(512, 512)" filter="url(#subtle-shadow)">
+
+      <!-- Hexagonal Architectural Gateway Frame -->
+      <polygon points="
+        0,-400
+        346,-200
+        346,200
+        0,400
+        -346,200
+        -346,-200
+      " fill="none" stroke="#0f172a" stroke-width="36" stroke-linejoin="round" />
+
+      <polygon points="
+        0,-364
+        315,-182
+        315,182
+        0,364
+        -315,182
+        -315,-182
+      " fill="none" stroke="#00f5ff" stroke-width="4" opacity="0.45" stroke-dasharray="16, 12" />
+
+      <!-- Corner Accent Bolts on Hex Frame -->
+      <circle cx="0" cy="-400" r="7" fill="#00f5ff" />
+      <circle cx="346" cy="-200" r="7" fill="#00f5ff" />
+      <circle cx="346" cy="200" r="7" fill="#00f5ff" />
+      <circle cx="0" cy="400" r="7" fill="#00f5ff" />
+      <circle cx="-346" cy="200" r="7" fill="#00f5ff" />
+      <circle cx="-346" cy="-200" r="7" fill="#00f5ff" />
+
+      <!-- 100% Watertight Solid Base Silhouette (Zero-Leak Contiguous Path) -->
+      <path d="
+        M 0 -315
+        L 35 -290
+        L 65 -305
+        L 95 -265
+        L 145 -220
+        L 190 -160
+        L 285 -45
+        L 260 70
+        L 220 180
+        L 160 270
+        L 80 325
+        L 0 345
+        L -80 325
+        L -160 270
+        L -220 180
+        L -260 70
+        L -285 -45
+        L -190 -160
+        L -145 -220
+        L -95 -265
+        L -65 -305
+        L -35 -290
+        Z
+      " fill="#0b0f19" stroke="#0b0f19" stroke-width="2" />
+
+      <!-- Outer Wing Primary Feathers / Gateway Plates (Right Side) -->
+      <polygon points="145,-220 285,-45 205,-40" fill="#1e293b" />
+      <polygon points="285,-45 260,70 185,35" fill="#0f172a" />
+      <polygon points="260,70 220,180 155,125" fill="#1e293b" />
+      <polygon points="220,180 160,270 105,205" fill="#0f172a" />
+      <polygon points="160,270 80,325 55,235" fill="#1e293b" />
+
+      <!-- Outer Wing Primary Feathers / Gateway Plates (Left Side - Symmetrical) -->
+      <polygon points="-145,-220 -285,-45 -205,-40" fill="#334155" />
+      <polygon points="-285,-45 -260,70 -185,35" fill="#1e293b" />
+      <polygon points="-260,70 -220,180 -155,125" fill="#334155" />
+      <polygon points="-220,180 -160,270 -105,205" fill="#1e293b" />
+      <polygon points="-160,270 -80,325 -55,235" fill="#334155" />
+
+      <!-- Secondary Wing Struts (Aerodynamic Wing Ingress) -->
+      <polygon points="95,-265 145,-220 90,-160" fill="#334155" />
+      <polygon points="145,-220 205,-40 135,-60" fill="#475569" />
+      <polygon points="205,-40 185,35 125,15" fill="#334155" />
+      <polygon points="185,35 155,125 105,85" fill="#1e293b" />
+      <polygon points="155,125 105,205 65,155" fill="#334155" />
+
+      <polygon points="-95,-265 -145,-220 -90,-160" fill="#475569" />
+      <polygon points="-145,-220 -205,-40 -135,-60" fill="#64748b" />
+      <polygon points="-205,-40 -185,35 -125,15" fill="#475569" />
+      <polygon points="-185,35 -155,125 -105,85" fill="#334155" />
+      <polygon points="-155,125 -105,205 -65,155" fill="#475569" />
+
+      <!-- Osprey Raptor Crown Crest (Sharp Aerodynamic Feather Crest) -->
+      <polygon points="0,-315 35,-290 0,-270" fill="#475569" />
+      <polygon points="0,-315 -35,-290 0,-270" fill="#64748b" />
+      <polygon points="35,-290 65,-305 45,-260 0,-270" fill="#334155" />
+      <polygon points="-35,-290 -65,-305 -45,-260 0,-270" fill="#475569" />
+      <polygon points="65,-305 95,-265 55,-235 45,-260" fill="#1e293b" />
+      <polygon points="-65,-305 -95,-265 -55,-235 -45,-260" fill="#334155" />
+
+      <!-- Raptor Forehead & Central Skull Ridge -->
+      <polygon points="0,-270 45,-260 40,-205 0,-225" fill="#475569" />
+      <polygon points="0,-270 -45,-260 -40,-205 0,-225" fill="#64748b" />
+      <polygon points="45,-260 55,-235 90,-195 40,-205" fill="#334155" />
+      <polygon points="-45,-260 -55,-235 -90,-195 -40,-205" fill="#475569" />
+
+      <!-- Sharp Raptor Supraorbital Brow Ridges -->
+      <polygon points="0,-225 40,-205 38,-180 0,-195" fill="#1e293b" />
+      <polygon points="0,-225 -40,-205 -38,-180 0,-195" fill="#334155" />
+      <polygon points="40,-205 90,-195 80,-170 38,-180" fill="#0f172a" />
+      <polygon points="-40,-205 -90,-195 -80,-170 -38,-180" fill="#1e293b" />
+
+      <!-- Electric Cyan Raptor Eyes (Aggressive, Slanted, Focused) -->
+      <!-- Right Eye -->
+      <polygon points="42,-190 85,-180 70,-165 38,-172" fill="#030712" />
+      <polygon points="45,-186 78,-178 68,-168 42,-173" fill="url(#cyan-glow)" />
+      <polygon points="52,-183 68,-178 62,-171 50,-175" fill="#ffffff" opacity="0.9" />
+
+      <!-- Left Eye -->
+      <polygon points="-42,-190 -85,-180 -70,-165 -38,-172" fill="#030712" />
+      <polygon points="-45,-186 -78,-178 -68,-168 -42,-173" fill="url(#cyan-glow)" />
+      <polygon points="-52,-183 -68,-178 -62,-171 -50,-175" fill="#ffffff" opacity="0.9" />
+
+      <!-- Malar Stripe / Lateral Raptor Mask -->
+      <polygon points="90,-195 135,-155 90,-125 80,-170" fill="#1e293b" />
+      <polygon points="-90,-195 -135,-155 -90,-125 -80,-170" fill="#334155" />
+
+      <!-- Nasal Bridge (Cere & Upper Beak) -->
+      <polygon points="0,-195 38,-180 28,-130 0,-140" fill="#475569" />
+      <polygon points="0,-195 -38,-180 -28,-130 0,-140" fill="#64748b" />
+      <polygon points="38,-180 80,-170 58,-125 28,-130" fill="#334155" />
+      <polygon points="-38,-180 -80,-170 -58,-125 -28,-130" fill="#475569" />
+
+      <!-- Osprey Curved Hooked Beak (High Contrast Steel & Obsidian) -->
+      <polygon points="0,-140 28,-130 18,-60 0,-30" fill="#1e293b" />
+      <polygon points="0,-140 -28,-130 -18,-60 0,-30" fill="#0f172a" />
+      <!-- Beak Razor-Sharp Light Facet (Left side ambient) -->
+      <polygon points="0,-140 6,-130 4,-50 0,-30" fill="#94a3b8" />
+      <polygon points="0,-140 -6,-130 -4,-50 0,-30" fill="#64748b" />
+
+      <!-- Raptor Chin / Throat (Low-Poly Slate Facets) -->
+      <polygon points="0,-30 18,-60 40,-70 25,-20 0,-5" fill="#1e293b" />
+      <polygon points="0,-30 -18,-60 -40,-70 -25,-20 0,-5" fill="#334155" />
+
+      <!-- Neck & Breast Gorget (Hexagonal Chevron Plates) -->
+      <polygon points="0,-5 25,-20 68,-35 55,30 0,50" fill="#0f172a" />
+      <polygon points="0,-5 -25,-20 -68,-35 -55,30 0,50" fill="#1e293b" />
+
+      <!-- Lateral Torso Armor -->
+      <polygon points="55,30 125,15 105,85 40,95 0,50" fill="#1e293b" />
+      <polygon points="-55,30 -125,15 -105,85 -40,95 0,50" fill="#334155" />
+
+      <!-- Ingestion Gateway Core: Translucent Cyan Diamond Portal -->
+      <polygon points="0,60 70,125 0,200 -70,125" fill="url(#shield-grad)" stroke="#00f5ff" stroke-width="2.5" stroke-dasharray="6,4" />
+
+      <!-- Direct Stream Chevron -->
+      <polygon points="0,85 35,125 0,170 -35,125" fill="none" stroke="url(#cyan-glow)" stroke-width="3.5" />
+      <polygon points="0,100 20,125 0,155 -20,125" fill="url(#cyan-glow)" />
+
+      <!-- Lower Breast & Abdomen Plates -->
+      <polygon points="40,95 105,85 65,155 25,175 0,200" fill="#0f172a" />
+      <polygon points="-40,95 -105,85 -65,155 -25,175 0,200" fill="#1e293b" />
+
+      <polygon points="0,200 25,175 65,155 45,225 0,255" fill="#1e293b" />
+      <polygon points="0,200 -25,175 -65,155 -45,225 0,255" fill="#334155" />
+
+      <!-- Tail Keel Plates -->
+      <polygon points="0,255 45,225 55,235 30,295 0,335" fill="#0f172a" />
+      <polygon points="0,255 -45,225 -55,235 -30,295 0,335" fill="#1e293b" />
+
+      <!-- Wingtip Data Stream Accents -->
+      <line x1="220" y1="180" x2="160" y2="270" stroke="#00f5ff" stroke-width="2" opacity="0.7" />
+      <line x1="-220" y1="180" x2="-160" y2="270" stroke="#00f5ff" stroke-width="2" opacity="0.7" />
+      <circle cx="0" cy="335" r="4" fill="#00f5ff" />
+
+    </g>
+  </g>
+</svg>`;
+}
+
+async function main() {
+  const outputDir = path.resolve(__dirname, '../docs/images');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const svg = buildLogoSvg();
+  const svgPath = path.join(outputDir, 'logo.svg');
+  const pngPath = path.join(outputDir, 'logo.png');
+
+  fs.writeFileSync(svgPath, svg, 'utf8');
+  console.log('✓ Wrote logo.svg to', svgPath);
+
+  if (Resvg) {
+    const resvg = new Resvg(svg, {
+      fitTo: { mode: 'width', value: 1024 }
+    });
+    const pngData = resvg.render().asPng();
+    fs.writeFileSync(pngPath, pngData);
+    console.log('✓ Rendered logo.png with Resvg at 1024x1024 to', pngPath);
+  }
+}
+
+main().catch(err => {
+  console.error('Error rendering logo:', err);
+  process.exit(1);
+});
