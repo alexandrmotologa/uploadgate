@@ -1,0 +1,70 @@
+server:
+  port: 8080
+  host: "0.0.0.0"
+  api_key: "ug_secret_key_change_in_production"
+  cors_allowed_origins:
+    - "*"
+  db_path: "./data/uploadgate.db"
+
+storage:
+  default_provider: "local"
+  providers:
+    local:
+      type: "local"
+      directory: "./local_storage"
+      public_base_url: "http://localhost:8080/v1/storage/local"
+    minio:
+      type: "s3"
+      endpoint: "http://localhost:9000"
+      bucket: "uploadgate"
+      region: "us-east-1"
+      access_key_id: "minioadmin"
+      secret_access_key: "minioadmin"
+      public_base_url: "http://localhost:9000/uploadgate"
+      use_path_style: true
+    s3:
+      type: "s3"
+      endpoint: "https://s3.us-east-1.amazonaws.com"
+      bucket: "production-assets"
+      region: "us-east-1"
+      access_key_id: ""
+      secret_access_key: ""
+      public_base_url: "https://cdn.example.com"
+      use_path_style: false
+
+limits:
+  max_file_size_bytes: 104857600 # 100MB
+  presign_expiry_seconds: 3600
+  allowed_mime_types:
+    - "image/jpeg"
+    - "image/png"
+    - "image/webp"
+    - "image/gif"
+    - "image/svg+xml"
+    - "application/pdf"
+    - "video/mp4"
+    - "video/webm"
+    - "application/zip"
+    - "application/json"
+    - "text/csv"
+
+thumbnails:
+  enabled: true
+  formats:
+    - "webp"
+    - "jpeg"
+  variants:
+    - name: "thumb"
+      width: 150
+      height: 150
+      fit: "crop"
+    - name: "medium"
+      width: 600
+      height: 600
+      fit: "contain"
+
+webhooks:
+  endpoint: ""
+  secret: "whsec_change_me_to_random_secret"
+  max_retries: 5
+  timeout_seconds: 10
