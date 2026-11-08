@@ -1,5 +1,5 @@
 import { useState, useRef, ChangeEvent, FormEvent } from "react";
-import { UploadCloud, CheckCircle, AlertTriangle, ArrowRight, FileCheck, Terminal } from "lucide-react";
+import { UploadCloud, CheckCircle, AlertTriangle, ArrowRight, FileCheck, Terminal, Globe, FileUp } from "lucide-react";
 
 interface Props {
   apiKey: string;
@@ -8,7 +8,9 @@ interface Props {
 }
 
 export function PresignTester({ apiKey, defaultBucket, onUploadSuccess }: Props) {
+  const [mode, setMode] = useState<"file" | "url">("file");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [remoteURL, setRemoteURL] = useState<string>("");
   const [bucket, setBucket] = useState(defaultBucket || "local");
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<"idle" | "presigning" | "uploading" | "verifying" | "done" | "error">("idle");
@@ -30,8 +32,55 @@ export function PresignTester({ apiKey, defaultBucket, onUploadSuccess }: Props)
     }
   };
 
+  const handleURLIngest = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!remoteURL.trim()) return;
+
+    setIsProcessing(true);
+    setLogs([]);
+    setResultJSON("");
+    setStep("verifying");
+    addLog(`Initiating SSRF-protected URL ingestion: ${remoteURL}...`);
+
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+
+      const res = await fetch("/v1/uploads/from-url", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          url: remoteURL.trim(),
+          bucket,
+          metadata: { tester: "cockpit_url_ingest" },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `URL ingestion failed (${res.status})`);
+      }
+
+      setStep("done");
+      addLog(`URL ingestion complete! File: ${data.filename}, Size: ${data.original_size} bytes`);
+      addLog(`SHA-256: ${data.sha256}`);
+      setResultJSON(JSON.stringify(data, null, 2));
+      onUploadSuccess();
+    } catch (err: unknown) {
+      setStep("error");
+      const e = err instanceof Error ? err.message : String(err);
+      addLog(`ERROR: ${e}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleTestUpload = async (e: FormEvent) => {
     e.preventDefault();
+    if (mode === "url") {
+      return handleURLIngest(e);
+    }
+
     if (!selectedFile) return;
 
     setIsProcessing(true);
@@ -134,35 +183,80 @@ export function PresignTester({ apiKey, defaultBucket, onUploadSuccess }: Props)
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-      <div className="flex items-center gap-2 mb-4">
-        <UploadCloud className="w-5 h-5 text-blue-400" />
-        <h2 className="text-base font-semibold text-slate-100">Interactive Presign Sandbox</h2>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <UploadCloud className="w-5 h-5 text-blue-400" />
+          <h2 className="text-base font-semibold text-slate-100">Interactive Ingestion Sandbox</h2>
+        </div>
+
+        {/* Mode Selector */}
+        <div className="flex bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+          <button
+            type="button"
+            onClick={() => setMode("file")}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              mode === "file" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <FileUp className="w-3.5 h-3.5" />
+            Direct File
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("url")}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              mode === "url" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            From URL
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleTestUpload} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">Select File</label>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border border-dashed border-slate-700 hover:border-slate-600 rounded-lg p-3 text-center cursor-pointer bg-slate-950/40 hover:bg-slate-950 transition-colors"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={onFileChange}
-                disabled={isProcessing}
-              />
-              <span className="text-sm font-medium text-slate-300">
-                {selectedFile ? selectedFile.name : "Choose an image, PDF, SVG, or document to test"}
-              </span>
-              {selectedFile && (
-                <div className="text-xs text-slate-500 mt-0.5">
-                  {(selectedFile.size / 1024).toFixed(1)} KB &bull; {selectedFile.type || "unknown mime"}
+            {mode === "file" ? (
+              <>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Select File</label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border border-dashed border-slate-700 hover:border-slate-600 rounded-lg p-3 text-center cursor-pointer bg-slate-950/40 hover:bg-slate-950 transition-colors"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={onFileChange}
+                    disabled={isProcessing}
+                  />
+                  <span className="text-sm font-medium text-slate-300">
+                    {selectedFile ? selectedFile.name : "Choose an image, PDF, SVG, or document to test"}
+                  </span>
+                  {selectedFile && (
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      {(selectedFile.size / 1024).toFixed(1)} KB &bull; {selectedFile.type || "unknown mime"}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Remote Asset URL</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/photo.jpg"
+                  value={remoteURL}
+                  onChange={(e) => setRemoteURL(e.target.value)}
+                  disabled={isProcessing}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                />
+                <span className="text-[11px] text-slate-500 mt-1 block">
+                  SSRF protected: private IPs & metadata services are automatically blocked.
+                </span>
+              </>
+            )}
           </div>
 
           <div>
@@ -175,7 +269,7 @@ export function PresignTester({ apiKey, defaultBucket, onUploadSuccess }: Props)
               placeholder="local, minio, s3..."
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
             />
-            <span className="text-[11px] text-slate-500 mt-1 block">Leave default for local testing</span>
+            <span className="text-[11px] text-slate-500 mt-1 block">Leave default for local storage</span>
           </div>
         </div>
 
@@ -196,34 +290,34 @@ export function PresignTester({ apiKey, defaultBucket, onUploadSuccess }: Props)
             {step === "verifying" && (
               <span className="text-xs text-amber-400 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-spin" />
-                Verifying magic bytes & thumbnails...
+                {mode === "url" ? "Fetching & verifying remote asset..." : "Verifying magic bytes & thumbnails..."}
               </span>
             )}
             {step === "done" && (
               <span className="text-xs text-emerald-400 flex items-center gap-1.5 font-medium">
                 <CheckCircle className="w-4 h-4" />
-                Direct upload verified!
+                Ingestion verified!
               </span>
             )}
             {step === "error" && (
               <span className="text-xs text-rose-400 flex items-center gap-1.5 font-medium">
                 <AlertTriangle className="w-4 h-4" />
-                Upload rejected or failed
+                Rejected or failed
               </span>
             )}
           </div>
 
           <button
             type="submit"
-            disabled={!selectedFile || isProcessing}
+            disabled={isProcessing || (mode === "file" ? !selectedFile : !remoteURL.trim())}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg shadow transition-colors"
           >
-            Execute Direct Upload
+            {mode === "url" ? "Ingest Remote URL" : "Execute Direct Upload"}
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
 
-        {isProcessing && (
+        {isProcessing && mode === "file" && (
           <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
             <div
               className="bg-blue-500 h-full transition-all duration-150"

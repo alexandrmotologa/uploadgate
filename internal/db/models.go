@@ -32,6 +32,7 @@ type Upload struct {
 	DurationSeconds float64      `json:"duration_seconds"`
 	ErrorReason     string       `json:"error_reason,omitempty"`
 	MetadataJSON    string       `json:"metadata_json,omitempty"`
+	ExpiresAt       *time.Time   `json:"expires_at,omitempty"`
 	CreatedAt       time.Time    `json:"created_at"`
 	UpdatedAt       time.Time    `json:"updated_at"`
 	Thumbnails      []Thumbnail  `json:"thumbnails,omitempty"`

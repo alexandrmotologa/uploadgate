@@ -1,11 +1,19 @@
 import React, { useState, useRef, DragEvent, ChangeEvent } from "react";
 
+export interface CompressionOptions {
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number;
+  format?: "image/webp" | "image/jpeg";
+}
+
 export interface FileUploadProps {
   endpoint: string;
   apiKey?: string;
   bucket?: string;
   accept?: string;
   maxSizeBytes?: number;
+  compress?: CompressionOptions;
   metadata?: Record<string, unknown>;
   onUploadStart?: (file: File) => void;
   onProgress?: (percent: number, loaded: number, total: number) => void;
@@ -14,12 +22,66 @@ export interface FileUploadProps {
   className?: string;
 }
 
+async function compressImage(file: File, options: CompressionOptions): Promise<File> {
+  if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const maxWidth = options.maxWidth || 2048;
+      const maxHeight = options.maxHeight || 2048;
+      const quality = options.quality ?? 0.85;
+      const format = options.format || "image/webp";
+
+      let width = img.width;
+      let height = img.height;
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const ext = format === "image/webp" ? ".webp" : ".jpg";
+          const newName = file.name.replace(/\.[^/.]+$/, "") + ext;
+          const compressedFile = new File([blob], newName, { type: format });
+          resolve(compressedFile);
+        },
+        format,
+        quality
+      );
+    };
+    img.onerror = () => resolve(file);
+    img.src = url;
+  });
+}
+
 export function FileUpload({
   endpoint,
   apiKey,
   bucket,
   accept,
   maxSizeBytes,
+  compress,
   metadata,
   onUploadStart,
   onProgress,
@@ -38,10 +100,24 @@ export function FileUpload({
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const file = files[0];
+    let file = files[0];
+
+    setIsUploading(true);
+    setProgress(0);
+
+    // Apply client-side image compression if configured
+    if (compress && file.type.startsWith("image/")) {
+      setStatusText("Optimizing image client-side...");
+      try {
+        file = await compressImage(file, compress);
+      } catch {
+        // Fall back to original file if compression fails
+      }
+    }
 
     if (maxSizeBytes && file.size > maxSizeBytes) {
-      const err = new Error(`File size exceeds ${(maxSizeBytes / 1024 / 1024).toFixed(1)}MB limit`);
+      setIsUploading(false);
+      const err = new Error(`File size (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds limit`);
       onError?.(err);
       setStatusText(err.message);
       return;
@@ -53,9 +129,7 @@ export function FileUpload({
       setPreviewUrl(null);
     }
 
-    setIsUploading(true);
-    setProgress(0);
-    setStatusText("Preparing direct upload...");
+    setStatusText("Preparing direct upload ticket...");
     onUploadStart?.(file);
 
     try {
@@ -85,9 +159,9 @@ export function FileUpload({
       }
 
       const ticket = await presignRes.json();
-      setStatusText("Streaming bytes directly to storage...");
+      setStatusText("Streaming directly to storage...");
 
-      // 2. Direct binary transfer via XMLHttpRequest for accurate progress events
+      // 2. Direct binary transfer via XMLHttpRequest
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open(ticket.method || "PUT", ticket.presigned_url, true);
@@ -110,7 +184,7 @@ export function FileUpload({
           if (xhr.status >= 200 && xhr.status < 300) {
             resolve();
           } else {
-            reject(new Error(`Direct storage upload failed with HTTP ${xhr.status}`));
+            reject(new Error(`Storage upload failed with HTTP ${xhr.status}`));
           }
         };
 
@@ -119,7 +193,7 @@ export function FileUpload({
       });
 
       // 3. Complete and trigger ingestion verification
-      setStatusText("Verifying file integrity and generating variants...");
+      setStatusText("Verifying integrity & generating variants...");
       const completeRes = await fetch(`${cleanEndpoint}/v1/uploads/${ticket.upload_id}/complete`, {
         method: "POST",
         headers: presignHeaders,

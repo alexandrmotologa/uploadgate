@@ -31,14 +31,14 @@ func (r *Repository) CreateUpload(ctx context.Context, u *Upload) error {
 		id, filename, original_size, declared_mime, detected_mime,
 		storage_provider, storage_bucket, storage_key, public_url,
 		status, sha256, width, height, duration_seconds,
-		error_reason, metadata_json, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		error_reason, metadata_json, expires_at, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := r.db.ExecContext(ctx, query,
 		u.ID, u.Filename, u.OriginalSize, u.DeclaredMIME, u.DetectedMIME,
 		u.StorageProvider, u.StorageBucket, u.StorageKey, u.PublicURL,
 		u.Status, u.SHA256, u.Width, u.Height, u.DurationSeconds,
-		u.ErrorReason, u.MetadataJSON, u.CreatedAt, u.UpdatedAt,
+		u.ErrorReason, u.MetadataJSON, u.ExpiresAt, u.CreatedAt, u.UpdatedAt,
 	)
 	return err
 }
@@ -49,7 +49,7 @@ func (r *Repository) GetUpload(ctx context.Context, id string) (*Upload, error) 
 	SELECT id, filename, original_size, declared_mime, detected_mime,
 	       storage_provider, storage_bucket, storage_key, public_url,
 	       status, sha256, width, height, duration_seconds,
-	       error_reason, metadata_json, created_at, updated_at
+	       error_reason, metadata_json, expires_at, created_at, updated_at
 	FROM uploads WHERE id = ?
 	`
 	row := r.db.QueryRowContext(ctx, query, id)
@@ -59,7 +59,7 @@ func (r *Repository) GetUpload(ctx context.Context, id string) (*Upload, error) 
 		&u.ID, &u.Filename, &u.OriginalSize, &u.DeclaredMIME, &u.DetectedMIME,
 		&u.StorageProvider, &u.StorageBucket, &u.StorageKey, &u.PublicURL,
 		&u.Status, &u.SHA256, &u.Width, &u.Height, &u.DurationSeconds,
-		&u.ErrorReason, &u.MetadataJSON, &u.CreatedAt, &u.UpdatedAt,
+		&u.ErrorReason, &u.MetadataJSON, &u.ExpiresAt, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -128,7 +128,7 @@ func (r *Repository) ListUploads(ctx context.Context, status string, limit, offs
 	SELECT id, filename, original_size, declared_mime, detected_mime,
 	       storage_provider, storage_bucket, storage_key, public_url,
 	       status, sha256, width, height, duration_seconds,
-	       error_reason, metadata_json, created_at, updated_at
+	       error_reason, metadata_json, expires_at, created_at, updated_at
 	FROM uploads %s
 	ORDER BY created_at DESC
 	LIMIT ? OFFSET ?
@@ -148,7 +148,7 @@ func (r *Repository) ListUploads(ctx context.Context, status string, limit, offs
 			&u.ID, &u.Filename, &u.OriginalSize, &u.DeclaredMIME, &u.DetectedMIME,
 			&u.StorageProvider, &u.StorageBucket, &u.StorageKey, &u.PublicURL,
 			&u.Status, &u.SHA256, &u.Width, &u.Height, &u.DurationSeconds,
-			&u.ErrorReason, &u.MetadataJSON, &u.CreatedAt, &u.UpdatedAt,
+			&u.ErrorReason, &u.MetadataJSON, &u.ExpiresAt, &u.CreatedAt, &u.UpdatedAt,
 		); err != nil {
 			return nil, 0, err
 		}
@@ -233,7 +233,49 @@ func (r *Repository) RecordWebhookDelivery(ctx context.Context, w *WebhookDelive
 	return nil
 }
 
-// ListWebhookDeliveries returns recent webhook delivery logs.
+// DeleteUpload removes an upload record from SQLite.
+func (r *Repository) DeleteUpload(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM uploads WHERE id = ?", id)
+	return err
+}
+
+// FindExpiredUploads finds uploads that have passed their TTL or were abandoned in pending state.
+func (r *Repository) FindExpiredUploads(ctx context.Context, abandonedCutoff time.Time, now time.Time) ([]*Upload, error) {
+	query := `
+	SELECT id, filename, original_size, declared_mime, detected_mime,
+	       storage_provider, storage_bucket, storage_key, public_url,
+	       status, sha256, width, height, duration_seconds,
+	       error_reason, metadata_json, expires_at, created_at, updated_at
+	FROM uploads
+	WHERE (status = 'pending' AND created_at < ?)
+	   OR (expires_at IS NOT NULL AND expires_at < ?)
+	LIMIT 200
+	`
+	rows, err := r.db.QueryContext(ctx, query, abandonedCutoff, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var uploads []*Upload
+	for rows.Next() {
+		u := &Upload{}
+		if err := rows.Scan(
+			&u.ID, &u.Filename, &u.OriginalSize, &u.DeclaredMIME, &u.DetectedMIME,
+			&u.StorageProvider, &u.StorageBucket, &u.StorageKey, &u.PublicURL,
+			&u.Status, &u.SHA256, &u.Width, &u.Height, &u.DurationSeconds,
+			&u.ErrorReason, &u.MetadataJSON, &u.ExpiresAt, &u.CreatedAt, &u.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		thumbs, _ := r.ListThumbnailsByUploadID(ctx, u.ID)
+		u.Thumbnails = thumbs
+		uploads = append(uploads, u)
+	}
+
+	return uploads, nil
+}
+
 func (r *Repository) ListWebhookDeliveries(ctx context.Context, limit int) ([]*WebhookDelivery, error) {
 	if limit <= 0 {
 		limit = 50

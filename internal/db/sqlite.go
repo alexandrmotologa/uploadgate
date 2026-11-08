@@ -56,6 +56,7 @@ func runMigrations(db *sql.DB) error {
 		duration_seconds REAL NOT NULL DEFAULT 0.0,
 		error_reason TEXT NOT NULL DEFAULT '',
 		metadata_json TEXT NOT NULL DEFAULT '{}',
+		expires_at DATETIME,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);

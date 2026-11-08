@@ -136,7 +136,9 @@ func (s *Server) setupRoutes() {
 		r.Use(s.authMiddleware)
 
 		r.Post("/v1/uploads/presign", s.HandlePresign)
+		r.Post("/v1/uploads/presign-batch", s.HandlePresignBatch)
 		r.Post("/v1/uploads/presign-multipart", s.HandlePresignMultipart)
+		r.Post("/v1/uploads/from-url", s.HandleFromURL)
 		r.Post("/v1/uploads/{id}/complete", s.HandleComplete)
 		r.Get("/v1/uploads/{id}", s.HandleGetUpload)
 		r.Get("/v1/uploads", s.HandleListUploads)

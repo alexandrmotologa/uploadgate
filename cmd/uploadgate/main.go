@@ -17,6 +17,7 @@ import (
 	"github.com/alexandrmotologa/uploadgate/internal/api"
 	"github.com/alexandrmotologa/uploadgate/internal/config"
 	"github.com/alexandrmotologa/uploadgate/internal/db"
+	"github.com/alexandrmotologa/uploadgate/internal/gc"
 	"github.com/alexandrmotologa/uploadgate/internal/processor"
 	"github.com/alexandrmotologa/uploadgate/internal/storage"
 	"github.com/alexandrmotologa/uploadgate/internal/validator"
@@ -104,6 +105,10 @@ func cmdServe(args []string) {
 
 	webhookDispatcher := webhook.NewDispatcher(repo, &cfg.Webhooks)
 	defer webhookDispatcher.Stop()
+
+	cleaner := gc.NewCleaner(repo, storageMgr, 15*time.Minute, 2*time.Hour)
+	cleaner.Start()
+	defer cleaner.Stop()
 
 	server := api.NewServer(api.ServerOptions{
 		Config:            cfg,

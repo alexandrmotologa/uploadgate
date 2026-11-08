@@ -5,6 +5,7 @@ import { PresignTester } from "./components/PresignTester";
 import { IngestionFeed } from "./components/IngestionFeed";
 import { AssetPreviewModal, UploadAsset } from "./components/AssetPreviewModal";
 import { WebhooksMonitor, WebhookDeliveryItem } from "./components/WebhooksMonitor";
+import { WebhookPlayground } from "./components/WebhookPlayground";
 
 export function App() {
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem("ug_api_key") || "");
@@ -259,6 +260,9 @@ export function App() {
           onFilterChange={setStatusFilter}
           isLoading={isLoading}
         />
+
+        {/* Webhook Signature Playground & Developer Console */}
+        <WebhookPlayground />
 
         {/* Outbound Webhooks Log */}
         <WebhooksMonitor

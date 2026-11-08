@@ -211,6 +211,78 @@ func TestDisguisedExecutableRejection(t *testing.T) {
 	}
 }
 
+func TestFromURLSSRFProtection(t *testing.T) {
+	_, handler, _ := setupTestServer(t)
+
+	// Attempting to ingest internal metadata
+	body := map[string]string{
+		"url": "http://169.254.169.254/latest/meta-data/",
+	}
+	bodyBytes, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/v1/uploads/from-url", bytes.NewReader(bodyBytes))
+	req.Header.Set("Authorization", "Bearer test_api_key_123")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("expected 403 Forbidden for SSRF attempt, got %d", rec.Code)
+	}
+
+	respBody, _ := io.ReadAll(rec.Body)
+	if !strings.Contains(string(respBody), "ssrf blocked") {
+		t.Errorf("expected ssrf blocked message, got: %s", string(respBody))
+	}
+}
+
+func TestPresignBatch(t *testing.T) {
+	_, handler, _ := setupTestServer(t)
+
+	batchBody := map[string]interface{}{
+		"bucket": "local",
+		"files": []map[string]interface{}{
+			{
+				"filename":   "avatar.png",
+				"size_bytes": 1024,
+				"mime_type":  "image/png",
+			},
+			{
+				"filename":   "document.pdf",
+				"size_bytes": 4096,
+				"mime_type":  "application/pdf",
+			},
+		},
+	}
+	bodyBytes, _ := json.Marshal(batchBody)
+
+	req := httptest.NewRequest("POST", "/v1/uploads/presign-batch", bytes.NewReader(bodyBytes))
+	req.Header.Set("Authorization", "Bearer test_api_key_123")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("presign-batch failed with status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var batchResp BatchPresignResponse
+	if err := json.NewDecoder(rec.Body).Decode(&batchResp); err != nil {
+		t.Fatalf("failed to decode batch response: %v", err)
+	}
+
+	if len(batchResp.Items) != 2 {
+		t.Fatalf("expected 2 batch items, got %d", len(batchResp.Items))
+	}
+
+	for _, item := range batchResp.Items {
+		if item.Error != "" {
+			t.Errorf("unexpected error for %s: %s", item.Filename, item.Error)
+		}
+		if item.UploadID == "" || item.PresignedURL == "" {
+			t.Errorf("missing upload ID or presigned URL for %s", item.Filename)
+		}
+	}
+}
+
 func TestHealthAndMetricsEndpoints(t *testing.T) {
 	_, handler, _ := setupTestServer(t)
 

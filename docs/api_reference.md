@@ -9,7 +9,9 @@ All requests to the UploadGate API require an `Authorization: Bearer <API_KEY>` 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/v1/uploads/presign` | Generate a single presigned PUT upload URL |
+| `POST` | `/v1/uploads/presign-batch` | Generate batch presigned URLs for up to 100 files |
 | `POST` | `/v1/uploads/presign-multipart` | Initiate S3 multipart upload and get part URLs |
+| `POST` | `/v1/uploads/from-url` | Ingest asset directly from remote URL with SSRF protection |
 | `POST` | `/v1/uploads/:id/complete` | Complete upload and run security and thumbnail pipeline |
 | `GET` | `/v1/uploads/:id` | Fetch upload record status, metadata, and thumbnails |
 | `GET` | `/v1/uploads` | List recent uploads with pagination and status filters |

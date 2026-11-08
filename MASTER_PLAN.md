@@ -330,3 +330,11 @@ Delivered to your application backend with signature header `X-UploadGate-Signat
 - [x] Write integration test suite covering presigning, magic byte detection, SVG sanitization, and webhooks.
 - [x] Prepare Dockerfile (< 25MB scratch image), `docker-compose.yml` with MinIO, and comprehensive documentation in `docs/`.
 - [x] Finalize humanized `README.md` with configuration guides and drop-in integration snippets.
+
+### Phase 6: Enterprise Enhancements & Usability Upgrades
+- [x] Implement SSRF-safe URL Ingestion (`POST /v1/uploads/from-url`) with private CIDR / cloud metadata IP blocking.
+- [x] Implement Multi-File Batch Presigning (`POST /v1/uploads/presign-batch`) for zero-roundtrip multi-asset forms.
+- [x] Implement Ephemeral Asset Lifecycle & Abandoned Upload GC Worker (`internal/gc/cleaner.go`).
+- [x] Add client-side canvas-based image auto-compression in `<FileUpload />` and `<uploadgate-picker>`.
+- [x] Add Webhook Signature Playground & Code Generator in React 19 Cockpit.
+- [x] Update integration tests, API documentation, and binaries.
