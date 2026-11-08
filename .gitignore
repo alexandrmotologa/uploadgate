@@ -26,10 +26,12 @@ local_storage/
 
 # Node & Frontend dependencies
 node_modules/
+web/node_modules/
+widget/node_modules/
 .pnp
 .pnp.js
-web/dist/
-widget/dist/
+web/.vite/
+widget/.vite/
 
 # Logs
 *.log

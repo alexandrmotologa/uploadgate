@@ -286,47 +286,47 @@ Delivered to your application backend with signature header `X-UploadGate-Signat
 ## 6. Implementation Roadmap
 
 ### Phase 1: Gateway Core, Storage Connectors & SQLite Catalog
-- [ ] Initialize Go 1.24 module `github.com/alexandrmotologa/uploadgate`.
-- [ ] Implement SQLite schema and repository in `internal/db` with WAL mode.
-- [ ] Implement storage provider interface and multi-cloud drivers:
+- [x] Initialize Go 1.24 module `github.com/alexandrmotologa/uploadgate`.
+- [x] Implement SQLite schema and repository in `internal/db` with WAL mode.
+- [x] Implement storage provider interface and multi-cloud drivers:
   - AWS S3, Cloudflare R2, MinIO presigned URL generator (SigV4).
   - S3 Multipart Upload lifecycle (initiate, presign parts, complete).
   - Local filesystem storage adapter with secure streaming tokens.
-- [ ] Implement `POST /v1/uploads/presign` (single and multipart) with policy rules and size bounds.
-- [ ] Build configuration loader supporting YAML and environment variables.
+- [x] Implement `POST /v1/uploads/presign` (single and multipart) with policy rules and size bounds.
+- [x] Build configuration loader supporting YAML and environment variables.
 
 ### Phase 2: Ingestion Verification, Security Sniffer & Thumbnail Engine
-- [ ] Implement binary magic-byte sniffer supporting JPEG, PNG, GIF, WebP, AVIF, PDF, MP4, WebM, ZIP, JSON.
-- [ ] Implement SVG security sanitizer blocking stored XSS, script execution, and malicious attributes.
-- [ ] Implement checksum calculation (SHA-256) and ETag integrity matching.
-- [ ] Implement pure-Go image metadata extractor (width, height, orientation) and EXIF sanitizer.
-- [ ] Implement pure-Go responsive thumbnail synthesizer generating WebP and JPEG variants (150x150, 600x600).
-- [ ] Implement `POST /v1/uploads/:id/complete` endpoint executing the full verification and ingestion pipeline.
+- [x] Implement binary magic-byte sniffer supporting JPEG, PNG, GIF, WebP, AVIF, PDF, MP4, WebM, ZIP, JSON.
+- [x] Implement SVG security sanitizer blocking stored XSS, script execution, and malicious attributes.
+- [x] Implement checksum calculation (SHA-256) and ETag integrity matching.
+- [x] Implement pure-Go image metadata extractor (width, height, orientation) and EXIF sanitizer.
+- [x] Implement pure-Go responsive thumbnail synthesizer generating WebP and JPEG variants (150x150, 600x600).
+- [x] Implement `POST /v1/uploads/:id/complete` endpoint executing the full verification and ingestion pipeline.
 
 ### Phase 3: Real-Time SSE Hub, Webhook Dispatcher & Client Widgets
-- [ ] Implement Server-Sent Events (SSE) hub at `GET /v1/events` for real-time live ingestion streams.
-- [ ] Implement outbound webhook dispatcher with exponential backoff retries and HMAC-SHA256 signatures.
-- [ ] Implement webhook history inspection and manual retry endpoint (`POST /v1/webhooks/:id/retry`).
-- [ ] Implement 3KB drop-in client widget (`widget/`):
+- [x] Implement Server-Sent Events (SSE) hub at `GET /v1/events` for real-time live ingestion streams.
+- [x] Implement outbound webhook dispatcher with exponential backoff retries and HMAC-SHA256 signatures.
+- [x] Implement webhook history inspection and manual retry endpoint (`POST /v1/webhooks/:id/retry`).
+- [x] Implement 3KB drop-in client widget (`widget/`):
   - React 19 `<FileUpload />` component with drag-and-drop, progress bar, and instant preview.
   - Vanilla Web Component `<uploadgate-picker>` for plain HTML applications.
 
 ### Phase 4: Embedded React 19 Asset Cockpit
-- [ ] Scaffold Vite + React 19 + TypeScript + Tailwind CSS application in `web/`.
-- [ ] Implement Live Ingestion Feed with real-time SSE stream, status badges, and search filter.
-- [ ] Implement Storage Buckets Health Card displaying provider, region, and connectivity status.
-- [ ] Implement Interactive Presign Tester allowing direct browser uploads with progress bars.
-- [ ] Implement Asset Deep Inspector Modal with metadata, thumbnails, and preview.
-- [ ] Implement Webhooks Monitor showing delivery status, payload view, and retry button.
-- [ ] Embed static assets directly into Go binary using `//go:embed`.
+- [x] Scaffold Vite + React 19 + TypeScript + Tailwind CSS application in `web/`.
+- [x] Implement Live Ingestion Feed with real-time SSE stream, status badges, and search filter.
+- [x] Implement Storage Buckets Health Card displaying provider, region, and connectivity status.
+- [x] Implement Interactive Presign Tester allowing direct browser uploads with progress bars.
+- [x] Implement Asset Deep Inspector Modal with metadata, thumbnails, and preview.
+- [x] Implement Webhooks Monitor showing delivery status, payload view, and retry button.
+- [x] Embed static assets directly into Go binary using `//go:embed`.
 
 ### Phase 5: CLI Subcommands, Prometheus Metrics & Production Hardening
-- [ ] Build CLI subcommands in `cmd/uploadgate`:
+- [x] Build CLI subcommands in `cmd/uploadgate`:
   - `serve`: Starts API server, embedded cockpit, and background workers.
   - `verify <path|url>`: Standalone CLI validator for file signatures and metadata.
   - `presign`: CLI generator for test presigned URLs.
   - `health`: Liveness and readiness health checks.
-- [ ] Implement Prometheus metrics endpoint (`GET /metrics`).
-- [ ] Write integration test suite covering presigning, magic byte detection, SVG sanitization, and webhooks.
-- [ ] Prepare Dockerfile (< 25MB scratch image), `docker-compose.yml` with MinIO, and comprehensive documentation in `docs/`.
-- [ ] Finalize humanized `README.md` with configuration guides and drop-in integration snippets.
+- [x] Implement Prometheus metrics endpoint (`GET /metrics`).
+- [x] Write integration test suite covering presigning, magic byte detection, SVG sanitization, and webhooks.
+- [x] Prepare Dockerfile (< 25MB scratch image), `docker-compose.yml` with MinIO, and comprehensive documentation in `docs/`.
+- [x] Finalize humanized `README.md` with configuration guides and drop-in integration snippets.
