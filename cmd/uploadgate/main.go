@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -27,9 +28,20 @@ import (
 const version = "1.0.0"
 
 func main() {
+	for _, arg := range os.Args[1:] {
+		if arg == "version" || arg == "--version" || arg == "-v" || arg == "-V" {
+			printVersion()
+			return
+		}
+		if arg == "help" || arg == "--help" || arg == "-h" {
+			printUsage()
+			return
+		}
+	}
+
 	if len(os.Args) < 2 {
 		printUsage()
-		os.Exit(1)
+		return
 	}
 
 	command := os.Args[1]
@@ -43,15 +55,15 @@ func main() {
 		cmdPresign(os.Args[2:])
 	case "health":
 		cmdHealth(os.Args[2:])
-	case "version":
-		fmt.Printf("UploadGate v%s (Go direct-to-storage presigned gateway)\n", version)
-	case "help", "-h", "--help":
-		printUsage()
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %q\n\n", command)
 		printUsage()
 		os.Exit(1)
 	}
+}
+
+func printVersion() {
+	fmt.Printf("uploadgate v%s (%s/%s, %s)\n", version, runtime.GOOS, runtime.GOARCH, runtime.Version())
 }
 
 func printUsage() {

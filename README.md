@@ -5,6 +5,8 @@
 <h1 align="center">UploadGate</h1>
 
 <p align="center">
+  <a href="https://github.com/alexandrmotologa/uploadgate/actions/workflows/ci.yml"><img src="https://github.com/alexandrmotologa/uploadgate/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/alexandrmotologa/uploadgate/releases"><img src="https://img.shields.io/badge/version-v1.0.0-6366f1.svg?style=flat-square" alt="Version" /></a>
   <img src="https://img.shields.io/badge/go-1.24+-00ADD8?style=flat-square&logo=go" alt="Go Version" />
   <img src="https://img.shields.io/badge/react-19-61DAFB?style=flat-square&logo=react" alt="React 19" />
   <img src="https://img.shields.io/badge/memory-%3C40MB%20RAM-emerald?style=flat-square" alt="Memory Footprint" />
